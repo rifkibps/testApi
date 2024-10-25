@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Image, StyleSheet, Platform, View, Text } from "react-native";
+import {
+  Image,
+  StyleSheet,
+  Platform,
+  View,
+  Text,
+  AppRegistry,
+} from "react-native";
 
 import axios, { AxiosResponse } from "axios";
 
@@ -12,8 +19,10 @@ const HomeScreen = () => {
   const [state, setState] = useState(false);
   const [response, setResponse] = useState<AxiosResponse | null | void>(null);
   const [token, setToken] = useState<Token>({
-    access: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzI5ODQ0MDQzLCJpYXQiOjE3Mjk4NDM3NDMsImp0aSI6ImMxYThiYjJiODViZDQ3NGViODA1NDhiYTkzZWMyZTY0IiwidXNlcl9pZCI6MX0.NkzJPKjd3eOQ_plbwFrf0OiPIkKpO38A_VqmwGR1YAE",
-    refresh: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczNzYyMDQ3NywiaWF0IjoxNzI5ODQ0NDc3LCJqdGkiOiJhNjA5YWYxZmFmNjE0NzRmOGZlOTM3OWY0ZjhjMjM0MiIsInVzZXJfaWQiOjF9.No69dm5rdobLq5TtRje4WU3ElZczthOqsVsTDNXZSCE",
+    access:
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzI5ODQ3MTU0LCJpYXQiOjE3Mjk4NDY4NTQsImp0aSI6ImUyNTZiODdmYTRhYzQzZWI5NDhiNDRhNGE5MWFiNzgxIiwidXNlcl9pZCI6MX0.-ukYpS5uuR_rqoz460iniF7bUY7bfJxx4iy2ToVgn9o",
+    refresh:
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczNzYyMjg1NCwiaWF0IjoxNzI5ODQ2ODU0LCJqdGkiOiIwYzY2MzMzMTExMmI0MDRiOWIxYjY5YjBiMWFkMjhkYSIsInVzZXJfaWQiOjF9.QI4vVtS4tmjHJRckURTUoxVwUaMlPPXRo7y-FOZtkiA",
   });
 
   useEffect(() => {
@@ -21,33 +30,45 @@ const HomeScreen = () => {
       try {
         let apiResponse;
         while (!state) {
-          apiResponse = await axios.get('http://192.168.1.37:8000/api', {headers : {Authorization: `Bearer ${token.access}`}})
-          console.log('GA VALID')
-          if (apiResponse.status !== 200){
-            const newTokenResponse = await axios.post('http://192.168.1.37:8000/api/token/refresh', {refresh: token.refresh})
-            if (newTokenResponse.status === 200){
-              const newTokenData = newTokenResponse.data
-              setToken({ access: newTokenData.access, refresh: newTokenData.refresh });
-            }else{
-              throw new Error('Sorry, your token has expired. Please log in again.');
-            }
-          }else{
-            setState(true);
-            setResponse(apiResponse);
-            break;
-          }
+          apiResponse = await axios
+            .get("http://192.168.1.37:8000/api", {
+              headers: { Authorization: `Bearer ${token.access}` },
+            })
+            .then((response: AxiosResponse) => {
+              setState(true);
+              setResponse(response);
+            })
+            .catch(function (error) {
+              if (error.response) {
+                const newTokenResponse = axios.post(
+                  "http://192.168.1.37:8000/api/token/refresh",
+                  { refresh: token.refresh }
+                ).then((newResponse: AxiosResponse) => {
+                  const newTokenData = newResponse.data;
+                  console.log(newTokenData)
+                  // setToken({
+                  //   access: newTokenData.access,
+                  //   refresh: newTokenData.refresh,
+                  // });
+                })
+                //.catch(function (error) {
+                //   throw new Error(
+                //       "Sorry, your token has expired. Please log in again."
+                //     );
+                // })
+              }
+            });
         }
-      }catch (error) {
+      } catch (error) {
         console.error(error); // Handle errors appropriately (e.g., display an error message)
       }
-    }
+    };
     fetchData();
-
-  }, [token])
+  }, [token]);
 
   return (
     <View>
-      {state && response? (
+      {state && response ? (
         <Text>API response: {JSON.stringify(response.data, null, 2)}</Text>
       ) : (
         <Text>Fetching data...</Text>
