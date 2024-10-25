@@ -1,70 +1,68 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from "react";
+import { Image, StyleSheet, Platform, View, Text } from "react-native";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import axios, { AxiosResponse } from "axios";
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({ ios: 'cmd + d', android: 'cmd + m' })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+interface Token {
+  access: string;
+  refresh: string;
 }
 
+const HomeScreen = () => {
+  const [state, setState] = useState(false);
+  const [response, setResponse] = useState<AxiosResponse | null | void>(null);
+  const [token, setToken] = useState<Token>({
+    access: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzI5ODQ0MDQzLCJpYXQiOjE3Mjk4NDM3NDMsImp0aSI6ImMxYThiYjJiODViZDQ3NGViODA1NDhiYTkzZWMyZTY0IiwidXNlcl9pZCI6MX0.NkzJPKjd3eOQ_plbwFrf0OiPIkKpO38A_VqmwGR1YAE",
+    refresh: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczNzYyMDQ3NywiaWF0IjoxNzI5ODQ0NDc3LCJqdGkiOiJhNjA5YWYxZmFmNjE0NzRmOGZlOTM3OWY0ZjhjMjM0MiIsInVzZXJfaWQiOjF9.No69dm5rdobLq5TtRje4WU3ElZczthOqsVsTDNXZSCE",
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        let apiResponse;
+        while (!state) {
+          apiResponse = await axios.get('http://192.168.1.37:8000/api', {headers : {Authorization: `Bearer ${token.access}`}})
+          console.log('GA VALID')
+          if (apiResponse.status !== 200){
+            const newTokenResponse = await axios.post('http://192.168.1.37:8000/api/token/refresh', {refresh: token.refresh})
+            if (newTokenResponse.status === 200){
+              const newTokenData = newTokenResponse.data
+              setToken({ access: newTokenData.access, refresh: newTokenData.refresh });
+            }else{
+              throw new Error('Sorry, your token has expired. Please log in again.');
+            }
+          }else{
+            setState(true);
+            setResponse(apiResponse);
+            break;
+          }
+        }
+      }catch (error) {
+        console.error(error); // Handle errors appropriately (e.g., display an error message)
+      }
+    }
+    fetchData();
+
+  }, [token])
+
+  return (
+    <View>
+      {state && response? (
+        <Text>API response: {JSON.stringify(response.data, null, 2)}</Text>
+      ) : (
+        <Text>Fetching data...</Text>
+      )}
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  textHeader: {
+    fontSize: 20,
+    margin: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
+
+export default HomeScreen;
