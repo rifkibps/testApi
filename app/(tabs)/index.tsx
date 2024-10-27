@@ -1,70 +1,103 @@
 import React, { useState, useEffect } from "react";
-import {
-  Image,
-  StyleSheet,
-  Platform,
-  View,
-  Text,
-  AppRegistry,
-} from "react-native";
+import { StyleSheet, View, Text, Platform, Alert } from "react-native";
 
-import axios, { AxiosResponse } from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 
-interface Token {
-  access: string;
-  refresh: string;
-}
+import axios, { AxiosError, AxiosResponse } from "axios";
+// interface Token {
+//   access: string;
+//   refresh: string;
+// }
 
 const HomeScreen = () => {
   const [state, setState] = useState(false);
   const [response, setResponse] = useState<AxiosResponse | null | void>(null);
-  const [token, setToken] = useState<Token>({
-    access:
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzI5ODQ3MTU0LCJpYXQiOjE3Mjk4NDY4NTQsImp0aSI6ImUyNTZiODdmYTRhYzQzZWI5NDhiNDRhNGE5MWFiNzgxIiwidXNlcl9pZCI6MX0.-ukYpS5uuR_rqoz460iniF7bUY7bfJxx4iy2ToVgn9o",
-    refresh:
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczNzYyMjg1NCwiaWF0IjoxNzI5ODQ2ODU0LCJqdGkiOiIwYzY2MzMzMTExMmI0MDRiOWIxYjY5YjBiMWFkMjhkYSIsInVzZXJfaWQiOjF9.QI4vVtS4tmjHJRckURTUoxVwUaMlPPXRo7y-FOZtkiA",
-  });
+  const [tokenAccess, setTokenAccess] = useState<string>('');
+  const [tokenRefresh, setTokenRefresh] = useState<string>('');
+
+  const [result, setResult] = useState<string | null>();
+
+
+  const storeToken = async () => {
+    console.log("storeToken sedang dijalankan");
+    try {
+      if (Platform.OS === "web") {
+        await AsyncStorage.setItem("access", tokenAccess);
+        await AsyncStorage.setItem("refresh", tokenRefresh);
+      } else {
+        await SecureStore.setItemAsync("access", tokenAccess);
+        await SecureStore.setItemAsync("refresh", tokenRefresh);
+      }
+      console.log("storeToken selesai dijalankan");
+    } catch (error) {
+      console.error("Error retrieving data:", error);
+    }
+  };
+
+  const getToken = async () => {
+    try {
+      console.log("Get token sedang dijalankan");
+      let access, refresh;
+      if (Platform.OS === "web") {
+        [access, refresh] = await Promise.all([
+          AsyncStorage.getItem("access"),
+          AsyncStorage.getItem("refresh"),
+        ]);
+      } else {
+        [access, refresh] = await Promise.all([
+          SecureStore.getItemAsync("access"),
+          SecureStore.getItemAsync("refresh"),
+        ]);
+      }
+
+      if (!access || !refresh) {
+        console.log("Inisialisasi token dijalankan");
+        access = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMwMDIwMDU2LCJpYXQiOjE3MzAwMTk5OTYsImp0aSI6ImJiYTc3ZGVmYjczZDRkN2NiZDE3NmVmYmMzMzIzYzVkIiwidXNlcl9pZCI6MTN9.qlolnbHbJeQZOO7P_m00FGv-Hb206l-ajssLxRnsdSc'
+        refresh = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTczNzc5NTU2OSwiaWF0IjoxNzMwMDE5NTY5LCJqdGkiOiJiMjU1MDdkNjI1N2Y0NzgwOTYzMTc0N2NlZTk3ZTkyYSIsInVzZXJfaWQiOjEzfQ.SKMHVWprzMuFxNWJZw03seFAb_GM7WDgCz3XqSbEhI0'
+      }
+      console.log("Token Akses: ", access)
+      console.log("Token Refresh: ", refresh)
+      setTokenAccess(access)
+      setTokenRefresh(refresh)
+      await storeToken()
+      console.log("Get token telah selesai dijalankan");
+    } catch (error) {
+      console.error("Error retrieving tokens:", error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
+      const token = await getToken();
       try {
-        let apiResponse;
-        while (!state) {
-          apiResponse = await axios
-            .get("http://192.168.1.37:8000/api", {
-              headers: { Authorization: `Bearer ${token.access}` },
-            })
-            .then((response: AxiosResponse) => {
-              setState(true);
-              setResponse(response);
-            })
-            .catch(function (error) {
-              if (error.response) {
-                const newTokenResponse = axios.post(
-                  "http://192.168.1.37:8000/api/token/refresh",
-                  { refresh: token.refresh }
-                ).then((newResponse: AxiosResponse) => {
-                  const newTokenData = newResponse.data;
-                  console.log(newTokenData)
-                  // setToken({
-                  //   access: newTokenData.access,
-                  //   refresh: newTokenData.refresh,
-                  // });
-                })
-                //.catch(function (error) {
-                //   throw new Error(
-                //       "Sorry, your token has expired. Please log in again."
-                //     );
-                // })
-              }
-            });
-        }
+        const response = await axios.get("http://192.168.88.169:8000/api", {
+          headers: { Authorization: `Bearer ${tokenAccess}` },
+        })
+        setResponse(response);
       } catch (error) {
-        console.error(error); // Handle errors appropriately (e.g., display an error message)
+        // const err = error as AxiosError
+        // if (err.response && err.response.status === 401) {
+        //   console.log('renew');
+        //   try {
+        //     const newTokenResponse = await axios.post(
+        //       "http://192.168.88.169:8000/api/token/refresh",
+        //       { refresh: token.refresh }
+        //     );
+        //     const newTokenData = newTokenResponse.data;
+        //     setToken({ access: newTokenData.access, refresh: newTokenData.refresh });
+        //     await storeToken();
+        //   }catch (refreshError){
+        //     throw new Error(
+        //       "Sorry, your token API has expired (90 days). Please renew your session."
+        //     );
+        //   }
+        // }
       }
     };
     fetchData();
-  }, [token]);
+  }, [getToken]);
 
   return (
     <View>
